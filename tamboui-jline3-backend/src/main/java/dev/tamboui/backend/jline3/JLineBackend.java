@@ -29,6 +29,7 @@ public class JLineBackend extends AbstractBackend {
     private static final String CSI = ESC + "[";
 
     private final Terminal terminal;
+    private final boolean ownTerminal;
     private final PrintWriter writer;
     private final NonBlockingReader reader;
     private Attributes savedAttributes;
@@ -42,10 +43,23 @@ public class JLineBackend extends AbstractBackend {
      * @throws IOException if the terminal cannot be opened
      */
     public JLineBackend() throws IOException {
-        this.terminal = TerminalBuilder.builder()
-            .system(true)
-            .jansi(true)
-            .build();
+        this(TerminalBuilder.builder().system(true).jansi(true).build(), true);
+    }
+
+    /**
+     * Creates a new JLine 3 backend using an existing terminal.
+     * The caller retains ownership of the terminal; it will not be closed
+     * when this backend is closed.
+     *
+     * @param terminal the terminal to use
+     */
+    public JLineBackend(Terminal terminal) {
+        this(terminal, false);
+    }
+
+    private JLineBackend(Terminal terminal, boolean ownTerminal) {
+        this.terminal = terminal;
+        this.ownTerminal = ownTerminal;
         this.writer = terminal.writer();
         this.reader = terminal.reader();
         this.inAlternateScreen = false;
@@ -293,7 +307,9 @@ public class JLineBackend extends AbstractBackend {
         disableRawMode();
 
         writer.flush();
-        terminal.close();
+        if (ownTerminal) {
+            terminal.close();
+        }
     }
 
     /**
